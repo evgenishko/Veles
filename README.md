@@ -105,6 +105,18 @@ Set `enabled` to `true` when you want OpenCode to start Veles.
 
 ## Usage With LM Studio
 
+If `veles` is installed in your `PATH`, use the deeplink button:
+
+[Add to LM Studio](lmstudio://add_mcp?name=veles&config=eyJjb21tYW5kIjoidmVsZXMiLCJhcmdzIjpbIi0tc3RkaW8iXSwiZW52Ijp7IlZFTEVTX1JFUVVFU1RTX1BFUl9TRUNPTkQiOiIxIiwiVkVMRVNfQ0FDSEVfVFRMX1NFQ09ORFMiOiIzNjAwIiwiVkVMRVNfRERHX1JFR0lPTiI6Ind0LXd0IiwiVkVMRVNfU0FGRVNFQVJDSCI6Im1vZGVyYXRlIn19)
+
+When running from a source checkout, generate a deeplink with the absolute path to your local release binary:
+
+```bash
+./scripts/add-to-lmstudio.sh
+```
+
+Use `./scripts/add-to-lmstudio.sh --print-only` if you want to print the deeplink without opening it.
+
 LM Studio MCP configuration may vary by version. In the MCP/server settings, add a local stdio server and point it to the compiled binary:
 
 ```jsonc
@@ -115,7 +127,9 @@ LM Studio MCP configuration may vary by version. In the MCP/server settings, add
       "args": ["--stdio"],
       "env": {
         "VELES_REQUESTS_PER_SECOND": "1",
-        "VELES_CACHE_TTL_SECONDS": "3600"
+        "VELES_CACHE_TTL_SECONDS": "3600",
+        "VELES_DDG_REGION": "wt-wt",
+        "VELES_SAFESEARCH": "moderate"
       }
     }
   }
