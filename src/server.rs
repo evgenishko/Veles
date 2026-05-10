@@ -1,3 +1,4 @@
+use chrono::{Local, Utc};
 use rmcp::{
     ErrorData, Json, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -7,9 +8,11 @@ use rmcp::{
 
 use crate::{
     config::Config,
+    extract::read_page,
     state::AppState,
     tools::{
-        ResearchSource, WebExtractOutput, WebExtractParams, WebFetchOutput, WebFetchParams,
+        CurrentDateTimeOutput, CurrentDateTimeParams, ResearchSource, WebExtractOutput,
+        WebExtractParams, WebFetchOutput, WebFetchParams, WebReadOutput, WebReadParams,
         WebResearchOutput, WebResearchParams, WebSearchOutput, WebSearchParams, clamp_max_chars,
         clamp_max_results, truncate_chars,
     },
@@ -32,6 +35,24 @@ impl VelesServer {
 
 #[tool_router]
 impl VelesServer {
+    #[tool(
+        description = "Return the current local and UTC date/time from the system clock without using the internet."
+    )]
+    fn current_datetime(
+        &self,
+        Parameters(_params): Parameters<CurrentDateTimeParams>,
+    ) -> Json<CurrentDateTimeOutput> {
+        let local = Local::now();
+        let utc = Utc::now();
+
+        Json(CurrentDateTimeOutput {
+            local_time: local.to_rfc3339(),
+            utc_time: utc.to_rfc3339(),
+            unix_timestamp: utc.timestamp(),
+            timezone_offset: local.format("%:z").to_string(),
+        })
+    }
+
     #[tool(
         description = "Search the web using DuckDuckGo unofficial HTML parsing. Returns titles, URLs, and snippets."
     )]
@@ -67,6 +88,19 @@ impl VelesServer {
         let mut page = self.state.extract(&params.url).await?;
         page.text = truncate_chars(&page.text, clamp_max_chars(params.max_chars));
         Ok(Json(WebExtractOutput { page }))
+    }
+
+    #[tool(
+        description = "Read a public HTTP or HTTPS page and return clean LLM-friendly markdown with metadata and links."
+    )]
+    async fn web_read(
+        &self,
+        Parameters(params): Parameters<WebReadParams>,
+    ) -> Result<Json<WebReadOutput>, ErrorData> {
+        let fetched = self.state.fetch(&params.url).await?;
+        let page = read_page(&fetched, clamp_max_chars(params.max_chars));
+
+        Ok(Json(WebReadOutput { page }))
     }
 
     #[tool(

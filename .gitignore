@@ -34,3 +34,6 @@ debug/
 
 # Logs
 *.log
+
+# Local OpenCode session marker
+.session-id

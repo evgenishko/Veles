@@ -6,6 +6,7 @@ license = "MIT"
 
 [dependencies]
 anyhow = "1.0.102"
+chrono = { version = "0.4.44", features = ["clock", "serde"] }
 clap = { version = "4.6.1", features = ["derive"] }
 html2md = "0.2.15"
 moka = { version = "0.12.15", features = ["future"] }

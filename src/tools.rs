@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{extract::ExtractedPage, fetch::FetchedPage, search::SearchResult};
+use crate::{
+    extract::{ExtractedPage, ReadablePage},
+    fetch::FetchedPage,
+    search::SearchResult,
+};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct WebSearchParams {
@@ -22,6 +26,13 @@ pub struct WebExtractParams {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct WebReadParams {
+    pub url: String,
+    #[serde(default = "default_max_chars")]
+    pub max_chars: usize,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct WebResearchParams {
     pub query: String,
     #[serde(default = "default_max_results")]
@@ -31,6 +42,9 @@ pub struct WebResearchParams {
     #[serde(default = "default_max_chars")]
     pub max_chars_per_page: usize,
 }
+
+#[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
+pub struct CurrentDateTimeParams {}
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebSearchOutput {
@@ -49,6 +63,11 @@ pub struct WebExtractOutput {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct WebReadOutput {
+    pub page: ReadablePage,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebResearchOutput {
     pub query: String,
     pub sources: Vec<ResearchSource>,
@@ -61,6 +80,14 @@ pub struct ResearchSource {
     pub url: String,
     pub search_snippet: String,
     pub excerpt: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct CurrentDateTimeOutput {
+    pub local_time: String,
+    pub utc_time: String,
+    pub unix_timestamp: i64,
+    pub timezone_offset: String,
 }
 
 pub fn clamp_max_results(value: usize) -> usize {

@@ -128,6 +128,10 @@ Veles настраивается через environment variables:
 
 ## Доступные MCP Tools
 
+`current_datetime`
+
+Возвращает текущие локальные и UTC дату/время из системных данных без использования интернета.
+
 `web_search`
 
 Ищет через DuckDuckGo и возвращает result titles, URLs и snippets.
@@ -139,6 +143,10 @@ Veles настраивается через environment variables:
 `web_extract`
 
 Загружает страницу и извлекает читаемый Markdown-like текст и metadata.
+
+`web_read`
+
+Читает публичную HTTP/HTTPS страницу и возвращает более чистый LLM-friendly markdown с metadata, ссылками и флагом truncation. Это high-level инструмент чтения страниц, наиболее близкий к встроенному web fetcher.
 
 `web_research`
 

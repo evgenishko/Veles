@@ -128,6 +128,10 @@ Veles is configured with environment variables:
 
 ## Available MCP Tools
 
+`current_datetime`
+
+Returns the current local and UTC date/time from the system clock without using the internet.
+
 `web_search`
 
 Searches DuckDuckGo and returns result titles, URLs, and snippets.
@@ -139,6 +143,10 @@ Fetches a public HTTP/HTTPS page and returns text plus response metadata.
 `web_extract`
 
 Fetches a page and extracts readable Markdown-like text and metadata.
+
+`web_read`
+
+Reads a public HTTP/HTTPS page and returns cleaner LLM-friendly markdown with metadata, links, and a truncation flag. This is the high-level page-reading tool closest to a built-in web fetcher.
 
 `web_research`
 

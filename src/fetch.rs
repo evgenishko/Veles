@@ -10,7 +10,7 @@ use crate::{config::Config, error::VelesError, rate_limit::RateLimiter};
 pub struct FetchedPage {
     pub url: String,
     pub final_url: String,
-    pub status: u16,
+    pub status: i32,
     pub content_type: Option<String>,
     pub text: String,
 }
@@ -81,7 +81,7 @@ impl Fetcher {
         Ok(FetchedPage {
             url: parsed.to_string(),
             final_url,
-            status: status.as_u16(),
+            status: i32::from(status.as_u16()),
             content_type,
             text,
         })
@@ -145,4 +145,17 @@ fn block_private_ip(addr: IpAddr) -> Result<(), VelesError> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::FetchedPage;
+
+    #[test]
+    fn fetched_page_schema_does_not_use_uint16_format() {
+        let schema = schemars::schema_for!(FetchedPage);
+        let value = serde_json::to_value(schema).expect("serialize schema");
+
+        assert!(!value.to_string().contains("uint16"));
+    }
 }
