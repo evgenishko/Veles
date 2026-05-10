@@ -124,6 +124,10 @@ fn readable_blocks(root: ElementRef<'_>) -> String {
 
     if let Some(selector) = block_selector {
         for block in root.select(&selector) {
+            if should_skip_node(block) {
+                continue;
+            }
+
             let text = clean_inline_text(&block.text().collect::<Vec<_>>().join(" "));
             if text.is_empty() {
                 continue;
@@ -178,10 +182,18 @@ fn extract_links(html: &Html, base_url: &str) -> Vec<ReadableLink> {
     let mut links = Vec::new();
 
     for node in html.select(&selector) {
+        if should_skip_node(node) {
+            continue;
+        }
+
         let text = clean_inline_text(&node.text().collect::<Vec<_>>().join(" "));
         let Some(href) = node.value().attr("href") else {
             continue;
         };
+        if should_skip_href(href) {
+            continue;
+        }
+
         let url = match &base {
             Some(base) => base.join(href).ok().map(|url| url.to_string()),
             None => Url::parse(href).ok().map(|url| url.to_string()),
@@ -200,6 +212,91 @@ fn extract_links(html: &Html, base_url: &str) -> Vec<ReadableLink> {
     }
 
     links
+}
+
+fn should_skip_node(node: ElementRef<'_>) -> bool {
+    node.ancestors()
+        .filter_map(ElementRef::wrap)
+        .any(is_noise_element)
+}
+
+fn is_noise_element(node: ElementRef<'_>) -> bool {
+    let value = node.value();
+    if matches!(
+        value.name(),
+        "script"
+            | "style"
+            | "noscript"
+            | "template"
+            | "svg"
+            | "header"
+            | "footer"
+            | "nav"
+            | "aside"
+            | "form"
+            | "button"
+            | "iframe"
+    ) {
+        return true;
+    }
+
+    if value.attr("hidden").is_some() || value.attr("aria-hidden") == Some("true") {
+        return true;
+    }
+
+    if value.attr("style").is_some_and(|style| {
+        contains_any(
+            &style.to_ascii_lowercase(),
+            &["display:none", "visibility:hidden"],
+        )
+    }) {
+        return true;
+    }
+
+    let marker = [value.attr("id"), value.attr("class"), value.attr("role")]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_ascii_lowercase();
+
+    contains_any(
+        &marker,
+        &[
+            "ad-",
+            "ads",
+            "advert",
+            "banner",
+            "breadcrumb",
+            "cookie",
+            "consent",
+            "footer",
+            "header",
+            "menu",
+            "modal",
+            "newsletter",
+            "nav",
+            "popup",
+            "promo",
+            "share",
+            "sidebar",
+            "social",
+            "subscribe",
+        ],
+    )
+}
+
+fn contains_any(value: &str, needles: &[&str]) -> bool {
+    needles.iter().any(|needle| value.contains(needle))
+}
+
+fn should_skip_href(href: &str) -> bool {
+    let href = href.trim().to_ascii_lowercase();
+    href.is_empty()
+        || href.starts_with('#')
+        || href.starts_with("javascript:")
+        || href.starts_with("mailto:")
+        || href.starts_with("tel:")
 }
 
 fn select_text(html: &Html, selector: &str) -> Option<String> {
@@ -280,5 +377,41 @@ mod tests {
         assert!(readable.markdown.contains("useful content"));
         assert_eq!(readable.links[0].url, "https://example.com/next");
         assert!(!readable.truncated);
+    }
+
+    #[test]
+    fn read_page_ignores_common_noise_when_using_body() {
+        let page = FetchedPage {
+            url: "https://example.com".into(),
+            final_url: "https://example.com".into(),
+            status: 200,
+            content_type: Some("text/html".into()),
+            text: r#"
+                <html>
+                  <head><title>Example</title></head>
+                  <body>
+                    <nav><p>Navigation should not appear.</p><a href="/menu">Menu</a></nav>
+                    <div class="cookie-banner"><p>Accept cookies should not appear.</p></div>
+                    <p>Main body content starts here and contains useful information for the reader.</p>
+                    <p>More useful information keeps the body selector above the minimum threshold.</p>
+                    <p>This final paragraph adds enough real page text to make the fallback readable.</p>
+                    <footer><p>Footer should not appear.</p></footer>
+                  </body>
+                </html>
+            "#
+            .into(),
+        };
+
+        let readable = read_page(&page, 2000);
+
+        assert!(readable.markdown.contains("Main body content"));
+        assert!(!readable.markdown.contains("Navigation should not appear"));
+        assert!(
+            !readable
+                .markdown
+                .contains("Accept cookies should not appear")
+        );
+        assert!(!readable.markdown.contains("Footer should not appear"));
+        assert!(readable.links.is_empty());
     }
 }

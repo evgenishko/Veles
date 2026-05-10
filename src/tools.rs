@@ -50,36 +50,75 @@ pub struct CurrentDateTimeParams {}
 pub struct WebSearchOutput {
     pub query: String,
     pub results: Vec<SearchResult>,
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebFetchOutput {
+    pub ok: bool,
     pub page: FetchedPage,
+    pub error: Option<ToolIssue>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebExtractOutput {
+    pub ok: bool,
     pub page: ExtractedPage,
+    pub error: Option<ToolIssue>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebReadOutput {
+    pub ok: bool,
     pub page: ReadablePage,
+    pub error: Option<ToolIssue>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebResearchOutput {
     pub query: String,
     pub sources: Vec<ResearchSource>,
+    pub warnings: Vec<String>,
     pub note: String,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct ResearchSource {
+    pub ok: bool,
     pub title: Option<String>,
     pub url: String,
     pub search_snippet: String,
     pub excerpt: String,
+    pub error: Option<ToolIssue>,
+}
+
+#[derive(Debug, Clone, Serialize, schemars::JsonSchema)]
+pub struct ToolIssue {
+    pub kind: String,
+    pub message: String,
+    pub status: Option<i32>,
+    pub url: Option<String>,
+}
+
+impl ToolIssue {
+    pub fn http_status(status: i32, url: impl Into<String>) -> Self {
+        let url = url.into();
+        Self {
+            kind: "http_status".into(),
+            message: format!("Remote site returned HTTP status {status}"),
+            status: Some(status),
+            url: Some(url),
+        }
+    }
+
+    pub fn fetch_failed(message: impl Into<String>, url: impl Into<String>) -> Self {
+        Self {
+            kind: "fetch_failed".into(),
+            message: message.into(),
+            status: None,
+            url: Some(url.into()),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -104,6 +143,14 @@ pub fn truncate_chars(value: &str, max_chars: usize) -> String {
         result.push(ch);
     }
     result
+}
+
+pub fn fetch_issue(page: &FetchedPage) -> Option<ToolIssue> {
+    if page.is_success() {
+        None
+    } else {
+        Some(ToolIssue::http_status(page.status, page.final_url.clone()))
+    }
 }
 
 fn default_max_results() -> usize {

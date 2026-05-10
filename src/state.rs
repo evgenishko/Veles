@@ -5,7 +5,6 @@ use moka::future::Cache;
 use crate::{
     config::Config,
     error::VelesError,
-    extract::{ExtractedPage, extract_page},
     fetch::{FetchedPage, Fetcher},
     rate_limit::RateLimiter,
     search::{DuckDuckGoSearch, SearchResponse},
@@ -18,7 +17,6 @@ pub struct AppState {
     rate_limiter: Arc<RateLimiter>,
     search_cache: Cache<String, SearchResponse>,
     fetch_cache: Cache<String, FetchedPage>,
-    extract_cache: Cache<String, ExtractedPage>,
 }
 
 impl AppState {
@@ -31,7 +29,6 @@ impl AppState {
             rate_limiter: Arc::new(RateLimiter::new(config.requests_per_second)),
             search_cache: Cache::builder().time_to_live(cache_ttl).build(),
             fetch_cache: Cache::builder().time_to_live(cache_ttl).build(),
-            extract_cache: Cache::builder().time_to_live(cache_ttl).build(),
         })
     }
 
@@ -63,19 +60,5 @@ impl AppState {
         self.fetch_cache.insert(url.to_owned(), page.clone()).await;
 
         Ok(page)
-    }
-
-    pub async fn extract(&self, url: &str) -> Result<ExtractedPage, VelesError> {
-        if let Some(cached) = self.extract_cache.get(url).await {
-            return Ok(cached);
-        }
-
-        let page = self.fetch(url).await?;
-        let extracted = extract_page(&page);
-        self.extract_cache
-            .insert(url.to_owned(), extracted.clone())
-            .await;
-
-        Ok(extracted)
     }
 }

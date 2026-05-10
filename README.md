@@ -18,7 +18,7 @@ The first MVP is intentionally conservative: it does not automate a browser, doe
 - Markdown-like page extraction.
 - Small research workflow: search, fetch top pages, return excerpts and URLs.
 - Global outbound HTTP rate limit: 1 request per second by default.
-- In-memory cache for search, fetch, and extraction results.
+- In-memory cache for search and fetch results.
 
 ## Current Limitations
 
@@ -67,6 +67,16 @@ target/release/veles
 
 ## Usage With OpenCode
 
+The installer builds the release binary and writes an OpenCode MCP entry with `enabled: false`:
+
+```bash
+./scripts/install-opencode.sh
+```
+
+You can override the config path with `OPENCODE_CONFIG=/path/to/opencode.json ./scripts/install-opencode.sh`.
+
+Manual configuration:
+
 Add Veles to your OpenCode config:
 
 ```jsonc
@@ -76,8 +86,8 @@ Add Veles to your OpenCode config:
     "veles": {
       "type": "local",
       "command": ["/absolute/path/to/veles", "--stdio"],
-      "enabled": true,
-      "timeout": 10000,
+      "enabled": false,
+      "timeout": 60000,
       "environment": {
         "VELES_REQUESTS_PER_SECOND": "1",
         "VELES_CACHE_TTL_SECONDS": "3600",
@@ -91,9 +101,11 @@ Add Veles to your OpenCode config:
 
 Use the absolute path to `target/release/veles` or to any installed copy of the binary.
 
+Set `enabled` to `true` when you want OpenCode to start Veles.
+
 ## Usage With LM Studio
 
-LM Studio MCP configuration may vary by version. Add Veles as a local stdio MCP server and point the command to the compiled binary:
+LM Studio MCP configuration may vary by version. In the MCP/server settings, add a local stdio server and point it to the compiled binary:
 
 ```jsonc
 {
@@ -111,6 +123,13 @@ LM Studio MCP configuration may vary by version. Add Veles as a local stdio MCP 
 ```
 
 If your LM Studio version uses a different UI for MCP registration, choose a local stdio server and use the same command and arguments.
+
+Recommended LM Studio settings:
+
+- Server name: `veles`.
+- Command: absolute path to `target/release/veles`.
+- Arguments: `--stdio`.
+- Environment: keep `VELES_REQUESTS_PER_SECOND=1` unless you intentionally want a higher global request rate.
 
 ## Configuration
 
@@ -134,29 +153,29 @@ Returns the current local and UTC date/time from the system clock without using 
 
 `web_search`
 
-Searches DuckDuckGo and returns result titles, URLs, and snippets.
+Searches DuckDuckGo and returns result titles, URLs, snippets, and warnings. If DuckDuckGo returns no parseable results, Veles retries through DuckDuckGo Lite and then returns an empty result list with warnings instead of failing the MCP call.
 
 `web_fetch`
 
-Fetches a public HTTP/HTTPS page and returns text plus response metadata.
+Fetches a public HTTP/HTTPS page and returns text plus response metadata. HTTP statuses such as 403, 404, and 429 are returned as `ok: false` with a structured error object instead of an MCP error.
 
 `web_extract`
 
-Fetches a page and extracts readable Markdown-like text and metadata.
+Fetches a page and extracts readable Markdown-like text and metadata. Non-success HTTP statuses are reported as `ok: false`.
 
 `web_read`
 
-Reads a public HTTP/HTTPS page and returns cleaner LLM-friendly markdown with metadata, links, and a truncation flag. This is the high-level page-reading tool closest to a built-in web fetcher.
+Reads a public HTTP/HTTPS page and returns cleaner LLM-friendly markdown with metadata, links, and a truncation flag. This is the high-level page-reading tool closest to a built-in web fetcher. Non-success HTTP statuses are reported as `ok: false`.
 
 `web_research`
 
-Runs a small workflow: DuckDuckGo search, fetch top results, extract text, and return source excerpts.
+Runs a small workflow: DuckDuckGo search, fetch top results, extract text, and return source excerpts. Individual source failures are included in the result instead of failing the whole tool call.
 
 ## DuckDuckGo Notes
 
 Veles uses unofficial DuckDuckGo HTML parsing. This requires no API key, but it is not a stable public API. It is suitable for local personal use, not high-volume production search.
 
-If DuckDuckGo changes its HTML or blocks automated traffic, `web_search` may fail until the parser is updated.
+If DuckDuckGo changes its HTML or blocks automated traffic, `web_search` may return an empty result list with warnings. Veles first tries DuckDuckGo HTML search, then DuckDuckGo Lite.
 
 ## Security Notes
 
@@ -170,9 +189,7 @@ Veles is licensed under the MIT License.
 
 ## Roadmap
 
-- Improve DuckDuckGo Lite fallback parsing.
-- Add disk cache option.
-- Add optional SearXNG backend.
+- Improve DuckDuckGo resilience against markup changes and temporary blocks.
 - Add Firefox/browser backend for JavaScript-heavy pages.
 - Add more robust readable-content extraction.
-- Add package/install scripts for common MCP clients.
+- Add package/install scripts for more MCP clients.

@@ -52,13 +52,6 @@ impl Fetcher {
             .and_then(|value| value.to_str().ok())
             .map(str::to_owned);
 
-        if !status.is_success() {
-            return Err(VelesError::HttpStatus {
-                url: final_url,
-                status: status.as_u16(),
-            });
-        }
-
         if let Some(size) = response.content_length()
             && size > self.max_page_bytes
         {
@@ -85,6 +78,12 @@ impl Fetcher {
             content_type,
             text,
         })
+    }
+}
+
+impl FetchedPage {
+    pub fn is_success(&self) -> bool {
+        (200..=299).contains(&self.status)
     }
 }
 
