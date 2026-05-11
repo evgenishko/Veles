@@ -33,6 +33,17 @@ pub struct WebReadParams {
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct WebReadRenderedParams {
+    pub url: String,
+    #[serde(default = "default_max_chars")]
+    pub max_chars: usize,
+    #[serde(default)]
+    pub allow_browser: bool,
+    pub headless: Option<bool>,
+    pub settle_ms: Option<u64>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
 pub struct WebResearchParams {
     pub query: String,
     #[serde(default = "default_max_results")]
@@ -75,6 +86,14 @@ pub struct WebReadOutput {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+pub struct WebReadRenderedOutput {
+    pub ok: bool,
+    pub page: Option<ReadablePage>,
+    pub error: Option<ToolIssue>,
+    pub needs_browser_permission: bool,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 pub struct WebResearchOutput {
     pub query: String,
     pub sources: Vec<ResearchSource>,
@@ -114,6 +133,33 @@ impl ToolIssue {
     pub fn fetch_failed(message: impl Into<String>, url: impl Into<String>) -> Self {
         Self {
             kind: "fetch_failed".into(),
+            message: message.into(),
+            status: None,
+            url: Some(url.into()),
+        }
+    }
+
+    pub fn browser_permission_required() -> Self {
+        Self {
+            kind: "browser_permission_required".into(),
+            message: "Browser rendering launches Firefox through geckodriver with a temporary private profile. Ask the user for permission, then retry with allow_browser=true.".into(),
+            status: None,
+            url: None,
+        }
+    }
+
+    pub fn browser_disabled() -> Self {
+        Self {
+            kind: "browser_disabled".into(),
+            message: "Browser rendering is disabled. Set VELES_BROWSER_ENABLED=true to enable web_read_rendered.".into(),
+            status: None,
+            url: None,
+        }
+    }
+
+    pub fn browser_failed(message: impl Into<String>, url: impl Into<String>) -> Self {
+        Self {
+            kind: "browser_failed".into(),
             message: message.into(),
             status: None,
             url: Some(url.into()),

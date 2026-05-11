@@ -11,6 +11,7 @@ pub struct Config {
     pub ddg_region: String,
     pub safe_search: SafeSearch,
     pub user_agent: String,
+    pub browser: BrowserConfig,
 }
 
 impl Config {
@@ -32,7 +33,31 @@ impl Config {
                 &env::var("VELES_SAFESEARCH").unwrap_or_else(|_| "moderate".into()),
             )?,
             user_agent: env::var("VELES_USER_AGENT")
-                .unwrap_or_else(|_| "Veles/0.1 local MCP server".into()),
+                .unwrap_or_else(|_| "Veles/0.5 local MCP server".into()),
+            browser: BrowserConfig::from_env()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct BrowserConfig {
+    pub enabled: bool,
+    pub driver: String,
+    pub firefox_binary: Option<String>,
+    pub headless: bool,
+    pub page_timeout: Duration,
+    pub settle: Duration,
+}
+
+impl BrowserConfig {
+    fn from_env() -> Result<Self, VelesError> {
+        Ok(Self {
+            enabled: read_env("VELES_BROWSER_ENABLED", false)?,
+            driver: env::var("VELES_BROWSER_DRIVER").unwrap_or_else(|_| "geckodriver".into()),
+            firefox_binary: read_optional_env("VELES_FIREFOX_BINARY"),
+            headless: read_env("VELES_BROWSER_HEADLESS", true)?,
+            page_timeout: Duration::from_millis(read_env("VELES_BROWSER_PAGE_TIMEOUT_MS", 90000)?),
+            settle: Duration::from_millis(read_env("VELES_BROWSER_SETTLE_MS", 2000)?),
         })
     }
 }
@@ -76,4 +101,8 @@ where
             .map_err(|err| VelesError::Config(format!("invalid {name}: {err}"))),
         Err(_) => Ok(default),
     }
+}
+
+fn read_optional_env(name: &str) -> Option<String> {
+    env::var(name).ok().filter(|value| !value.trim().is_empty())
 }

@@ -27,12 +27,17 @@ mcp["veles"] = {
     "type": "local",
     "command": [binary, "--stdio"],
     "enabled": False,
-    "timeout": 60000,
+    "timeout": 120000,
     "environment": {
         "VELES_REQUESTS_PER_SECOND": "1",
         "VELES_CACHE_TTL_SECONDS": "3600",
         "VELES_DDG_REGION": "wt-wt",
         "VELES_SAFESEARCH": "moderate",
+        "VELES_BROWSER_ENABLED": "false",
+        "VELES_BROWSER_DRIVER": "geckodriver",
+        "VELES_BROWSER_HEADLESS": "true",
+        "VELES_BROWSER_PAGE_TIMEOUT_MS": "90000",
+        "VELES_BROWSER_SETTLE_MS": "2000",
     },
 }
 

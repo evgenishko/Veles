@@ -3,6 +3,7 @@ use std::sync::Arc;
 use moka::future::Cache;
 
 use crate::{
+    browser::{BrowserRenderOptions, BrowserRenderer},
     config::Config,
     error::VelesError,
     fetch::{FetchedPage, Fetcher},
@@ -14,6 +15,7 @@ use crate::{
 pub struct AppState {
     search: DuckDuckGoSearch,
     fetcher: Fetcher,
+    browser: BrowserRenderer,
     rate_limiter: Arc<RateLimiter>,
     search_cache: Cache<String, SearchResponse>,
     fetch_cache: Cache<String, FetchedPage>,
@@ -26,6 +28,7 @@ impl AppState {
         Ok(Self {
             search: DuckDuckGoSearch::new(&config)?,
             fetcher: Fetcher::new(&config)?,
+            browser: BrowserRenderer::new(config.browser.clone()),
             rate_limiter: Arc::new(RateLimiter::new(config.requests_per_second)),
             search_cache: Cache::builder().time_to_live(cache_ttl).build(),
             fetch_cache: Cache::builder().time_to_live(cache_ttl).build(),
@@ -60,5 +63,13 @@ impl AppState {
         self.fetch_cache.insert(url.to_owned(), page.clone()).await;
 
         Ok(page)
+    }
+
+    pub async fn render(
+        &self,
+        url: &str,
+        options: BrowserRenderOptions,
+    ) -> Result<FetchedPage, VelesError> {
+        self.browser.render(url, &self.rate_limiter, options).await
     }
 }

@@ -23,6 +23,15 @@ pub enum VelesError {
 
     #[error("search parsing failed: {0}")]
     SearchParse(String),
+
+    #[error("browser rendering is disabled")]
+    BrowserDisabled,
+
+    #[error("browser rendering requires explicit user permission")]
+    BrowserPermissionRequired,
+
+    #[error("browser rendering failed: {0}")]
+    Browser(String),
 }
 
 impl From<VelesError> for ErrorData {

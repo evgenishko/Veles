@@ -104,18 +104,23 @@ fn readable_body(html: &Html) -> Option<String> {
         "#content",
         "body",
     ];
+    let mut best = String::new();
 
     for candidate in candidates {
         let selector = Selector::parse(candidate).ok()?;
         for node in html.select(&selector) {
             let text = readable_blocks(node);
-            if text.chars().count() >= 200 {
+            let text_len = text.chars().count();
+            if text_len >= 200 {
                 return Some(text);
+            }
+            if text_len > best.chars().count() {
+                best = text;
             }
         }
     }
 
-    None
+    if best.is_empty() { None } else { Some(best) }
 }
 
 fn readable_blocks(root: ElementRef<'_>) -> String {

@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use chrono::{Local, Utc};
 use rmcp::{
     ErrorData, Json, ServerHandler,
@@ -7,14 +9,17 @@ use rmcp::{
 };
 
 use crate::{
+    browser::BrowserRenderOptions,
     config::Config,
+    error::VelesError,
     extract::{extract_page, read_page},
     state::AppState,
     tools::{
         CurrentDateTimeOutput, CurrentDateTimeParams, ResearchSource, WebExtractOutput,
         WebExtractParams, WebFetchOutput, WebFetchParams, WebReadOutput, WebReadParams,
-        WebResearchOutput, WebResearchParams, WebSearchOutput, WebSearchParams, clamp_max_chars,
-        clamp_max_results, fetch_issue, truncate_chars,
+        WebReadRenderedOutput, WebReadRenderedParams, WebResearchOutput, WebResearchParams,
+        WebSearchOutput, WebSearchParams, clamp_max_chars, clamp_max_results, fetch_issue,
+        truncate_chars,
     },
 };
 
@@ -111,6 +116,53 @@ impl VelesServer {
         let page = read_page(&fetched, clamp_max_chars(params.max_chars));
 
         Ok(Json(WebReadOutput { ok, page, error }))
+    }
+
+    #[tool(
+        description = "Render a public HTTP or HTTPS page in Firefox through geckodriver and return clean LLM-friendly markdown. Requires VELES_BROWSER_ENABLED=true and first-call allow_browser=true consent."
+    )]
+    async fn web_read_rendered(
+        &self,
+        Parameters(params): Parameters<WebReadRenderedParams>,
+    ) -> Result<Json<WebReadRenderedOutput>, ErrorData> {
+        let options = BrowserRenderOptions {
+            allow_browser: params.allow_browser,
+            headless: params.headless,
+            settle: params.settle_ms.map(Duration::from_millis),
+        };
+
+        match self.state.render(&params.url, options).await {
+            Ok(fetched) => {
+                let page = read_page(&fetched, clamp_max_chars(params.max_chars));
+                Ok(Json(WebReadRenderedOutput {
+                    ok: true,
+                    page: Some(page),
+                    error: None,
+                    needs_browser_permission: false,
+                }))
+            }
+            Err(VelesError::BrowserPermissionRequired) => Ok(Json(WebReadRenderedOutput {
+                ok: false,
+                page: None,
+                error: Some(crate::tools::ToolIssue::browser_permission_required()),
+                needs_browser_permission: true,
+            })),
+            Err(VelesError::BrowserDisabled) => Ok(Json(WebReadRenderedOutput {
+                ok: false,
+                page: None,
+                error: Some(crate::tools::ToolIssue::browser_disabled()),
+                needs_browser_permission: false,
+            })),
+            Err(err) => Ok(Json(WebReadRenderedOutput {
+                ok: false,
+                page: None,
+                error: Some(crate::tools::ToolIssue::browser_failed(
+                    err.to_string(),
+                    params.url,
+                )),
+                needs_browser_permission: false,
+            })),
+        }
     }
 
     #[tool(
