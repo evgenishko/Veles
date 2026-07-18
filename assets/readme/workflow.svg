@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Veles web research workflow</title>
+  <desc id="desc">DuckDuckGo search leads to either public-page reading or opt-in Firefox rendering. Both paths return structured sources for the calling LLM.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="4" orient="auto">
+      <path d="M0 0L11 4L0 8Z" fill="#ff7a34"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="400" rx="20" fill="#171a22"/>
+  <text x="64" y="68" fill="#f4f2eb" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="44" font-weight="750" letter-spacing="-1.5">Source-backed research</text>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
+    <rect x="64" y="164" width="250" height="142" rx="12" fill="#202530" stroke="#4f5968" stroke-width="2"/>
+    <text x="90" y="224" fill="#ffb06a" font-size="48" font-weight="750" letter-spacing="-1">SEARCH</text>
+    <rect x="420" y="126" width="278" height="116" rx="12" fill="#202530" stroke="#4f5968" stroke-width="2"/>
+    <text x="446" y="180" fill="#f4f2eb" font-size="46" font-weight="750" letter-spacing="-1">READ</text>
+    <rect x="420" y="270" width="278" height="84" rx="12" fill="#202530" stroke="#84c089" stroke-width="2"/>
+    <text x="446" y="320" fill="#f4f2eb" font-size="38" font-weight="750" letter-spacing="-1">FIREFOX</text>
+    <rect x="806" y="164" width="330" height="142" rx="12" fill="#26322a" stroke="#84c089" stroke-width="2"/>
+    <text x="834" y="224" fill="#84c089" font-size="44" font-weight="750" letter-spacing="-1">SOURCES</text>
+  </g>
+  <path d="M314 208H370Q390 208 390 188V184Q390 164 420 164" fill="none" stroke="#ff7a34" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M314 262H370Q390 262 390 292V312Q390 312 420 312" fill="none" stroke="#ff7a34" stroke-width="3" marker-end="url(#arrow)"/>
+  <path d="M698 184H806M698 312H752Q772 312 772 292V256Q772 236 806 236" fill="none" stroke="#ff7a34" stroke-width="3" marker-end="url(#arrow)"/>
+</svg>

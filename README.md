@@ -1,85 +1,57 @@
 # Veles
 
-Veles is a local Rust-based MCP server that gives local LLMs controlled access to web search, page extraction, and opt-in browser rendering through DuckDuckGo and Firefox.
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Veles, a Rust MCP server for controlled web research with DuckDuckGo search, blocking of obvious local and private targets, and opt-in Firefox rendering">
+</p>
 
-## What Is Veles
+Veles is a local Rust-based MCP server for local LLMs that need controlled access to web search and page content. It searches DuckDuckGo, reads public pages, and returns structured sources for research-style prompts.
 
-Veles is designed for local models running on your computer. It exposes a small set of MCP tools for searching the web, fetching pages, extracting readable text, and collecting source excerpts for research-style prompts.
+## What You Get
 
-The first MVP is intentionally conservative: it does not require API keys, uses DuckDuckGo through unofficial HTML parsing, and keeps browser rendering disabled until explicitly enabled.
+- **Local MCP over stdio** with no API key required.
+- **Web search and source collection** through DuckDuckGo HTML and DuckDuckGo Lite fallbacks.
+- **Readable page retrieval** through `web_fetch`, `web_extract`, and `web_read`.
+- **Opt-in Firefox rendering** for JavaScript-heavy pages through `web_read_rendered`.
+- **Safety-first defaults**: public HTTP/HTTPS only, obvious local and private targets blocked, bounded redirects and responses, and a global outbound rate limit.
 
-## Features
+## How It Works
 
-- Local MCP server over stdio.
-- Rust implementation.
-- DuckDuckGo-only web search.
-- Unofficial DuckDuckGo HTML parsing.
-- Public HTTP/HTTPS page fetching.
-- Markdown-like page extraction.
-- Optional Firefox rendering for JavaScript-heavy pages.
-- Small research workflow: search, fetch top pages, return excerpts and URLs.
-- Global outbound HTTP rate limit: 1 request per second by default.
-- In-memory cache for search and fetch results.
+<p align="center">
+  <img src="./assets/readme/workflow.svg" width="100%" alt="Veles workflow from a web search query through DuckDuckGo and public-page reading to structured sources, with an opt-in Firefox rendering path">
+</p>
 
-## Current Limitations
+Veles does not synthesize final answers. It returns structured sources, excerpts, URLs, and warnings for the calling LLM to use as data.
 
-- Browser rendering requires Firefox, geckodriver, and `VELES_BROWSER_ENABLED=true`.
-- Rendered pages do not expose reliable HTTP status codes through WebDriver.
-- DuckDuckGo parsing is unofficial and can break if DuckDuckGo changes its HTML.
-- DuckDuckGo may still return 429, CAPTCHA, or temporary blocks under automated load.
-- Veles does not synthesize final answers itself; it returns structured sources for the LLM.
-
-## Safety Defaults
-
-- Maximum 1 outbound HTTP request per second by default.
-- Only `http://` and `https://` URLs are allowed.
-- `localhost`, local IPs, private IPs, link-local IPs, and unsupported schemes are blocked by default.
-- Redirects are limited.
-- Response size is limited.
-- Browser rendering is disabled by default and requires explicit first-call consent with `allow_browser=true`.
-- Web page content should always be treated as untrusted input.
-
-## Installation
+## Quick Start
 
 Install Rust with rustup:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-```
-
-Reload your shell or run:
-
-```bash
 . "$HOME/.cargo/env"
 ```
 
-## Build From Source
-
-Clone the repository and build the binary:
+Build the release binary:
 
 ```bash
 cargo build --release
 ```
 
-The binary will be available at:
+The binary is available at `target/release/veles`.
 
-```text
-target/release/veles
-```
-
-## Usage With OpenCode
-
-The installer builds the release binary and writes an OpenCode MCP entry with `enabled: false`:
+To build Veles and register a disabled local MCP entry for OpenCode:
 
 ```bash
 ./scripts/install-opencode.sh
 ```
 
-You can override the config path with `OPENCODE_CONFIG=/path/to/opencode.json ./scripts/install-opencode.sh`.
+Set `enabled` to `true` in your OpenCode configuration when you want OpenCode to start Veles.
+
+## Use With OpenCode
+
+You can override the configuration path with `OPENCODE_CONFIG=/path/to/opencode.json ./scripts/install-opencode.sh`.
 
 Manual configuration:
-
-Add Veles to your OpenCode config:
 
 ```jsonc
 {
@@ -108,9 +80,7 @@ Add Veles to your OpenCode config:
 
 Use the absolute path to `target/release/veles` or to any installed copy of the binary.
 
-Set `enabled` to `true` when you want OpenCode to start Veles.
-
-## Usage With LM Studio
+## Use With LM Studio
 
 In LM Studio, open the `Program` tab, choose `Install`, then choose `Edit mcp.json`. Add Veles as a local stdio MCP server and point `command` to the compiled binary:
 
@@ -140,7 +110,28 @@ Recommended LM Studio settings:
 - Arguments: `--stdio`.
 - Environment: keep `VELES_REQUESTS_PER_SECOND=1` unless you intentionally want a higher global request rate.
 
-## Configuration
+## MCP Tools
+
+| Tool | Purpose |
+| --- | --- |
+| `current_datetime` | Returns local and UTC time from the system clock without using the internet. |
+| `web_search` | Searches DuckDuckGo and returns result titles, URLs, snippets, and warnings. It falls back from DuckDuckGo HTML to DuckDuckGo Lite before returning an empty list with warnings. |
+| `web_fetch` | Fetches a public HTTP/HTTPS page and returns text plus response metadata. Non-success HTTP statuses are structured results, not MCP errors. |
+| `web_extract` | Fetches a page and extracts readable Markdown-like text and metadata. |
+| `web_read` | Returns cleaner LLM-friendly Markdown with metadata, links, and a truncation flag. |
+| `web_read_rendered` | Reads JavaScript-heavy pages through Firefox after browser opt-in. |
+| `web_research` | Searches, fetches top results, extracts text, and returns source excerpts. Individual source failures do not fail the whole workflow. |
+
+## Safety By Default
+
+- Veles permits only `http://` and `https://` URLs and blocks localhost, local IPs, private IPs, link-local IPs, and unsupported schemes by default.
+- The default global outbound rate is one request per second; redirects and response sizes are bounded.
+- Browser rendering is disabled by default. Its first call requires `allow_browser=true`, then consent lasts only until the server restarts.
+- Treat all fetched and rendered page content as untrusted input. A page can contain prompt-injection text intended to influence the model.
+- Veles blocks obvious local and private targets, but it is not a complete sandbox. Do not expose it to untrusted remote users.
+
+<details>
+<summary><strong>Configuration reference</strong></summary>
 
 Veles is configured with environment variables:
 
@@ -160,7 +151,10 @@ Veles is configured with environment variables:
 | `VELES_BROWSER_PAGE_TIMEOUT_MS` | `90000` | Browser page load and startup timeout. |
 | `VELES_BROWSER_SETTLE_MS` | `2000` | Extra wait after page load before reading rendered DOM. |
 
-## Firefox Rendering
+</details>
+
+<details>
+<summary><strong>Firefox rendering</strong></summary>
 
 `web_read_rendered` is for JavaScript-heavy pages that do not expose useful content through plain HTTP fetching. It uses Firefox through geckodriver, creates a temporary private profile for each call, reads the rendered DOM, then closes the browser session and geckodriver process.
 
@@ -174,56 +168,30 @@ The first browser call in each Veles process requires explicit permission. A cal
 
 Firefox runs headless by default. Set `VELES_BROWSER_HEADLESS=false` or pass `headless: false` to `web_read_rendered` if you want to see the browser window.
 
-## Available MCP Tools
+</details>
 
-`current_datetime`
-
-Returns the current local and UTC date/time from the system clock without using the internet.
-
-`web_search`
-
-Searches DuckDuckGo and returns result titles, URLs, snippets, and warnings. If DuckDuckGo returns no parseable results, Veles retries through DuckDuckGo Lite and then returns an empty result list with warnings instead of failing the MCP call.
-
-`web_fetch`
-
-Fetches a public HTTP/HTTPS page and returns text plus response metadata. HTTP statuses such as 403, 404, and 429 are returned as `ok: false` with a structured error object instead of an MCP error.
-
-`web_extract`
-
-Fetches a page and extracts readable Markdown-like text and metadata. Non-success HTTP statuses are reported as `ok: false`.
-
-`web_read`
-
-Reads a public HTTP/HTTPS page and returns cleaner LLM-friendly markdown with metadata, links, and a truncation flag. This is the high-level page-reading tool closest to a built-in web fetcher. Non-success HTTP statuses are reported as `ok: false`.
-
-`web_read_rendered`
-
-Renders a public HTTP/HTTPS page in Firefox through geckodriver and returns cleaner LLM-friendly markdown with metadata, links, and a truncation flag. This is the high-level browser-backed reader for JavaScript-heavy pages. It requires `VELES_BROWSER_ENABLED=true`; the first call also requires `allow_browser=true` after user approval.
-
-`web_research`
-
-Runs a small workflow: DuckDuckGo search, fetch top results, extract text, and return source excerpts. Individual source failures are included in the result instead of failing the whole tool call.
-
-## DuckDuckGo Notes
+<details>
+<summary><strong>DuckDuckGo notes</strong></summary>
 
 Veles uses unofficial DuckDuckGo HTML parsing. This requires no API key, but it is not a stable public API. It is suitable for local personal use, not high-volume production search.
 
 If DuckDuckGo changes its HTML or blocks automated traffic, `web_search` may return an empty result list with warnings. Veles first tries DuckDuckGo HTML search, then DuckDuckGo Lite.
 
-## Security Notes
+</details>
 
-Web content is untrusted input. A fetched or rendered page can contain prompt injection text that tries to influence the model. Treat returned page text as data, not instructions.
+## Limits
 
-Veles blocks obvious local/private targets by default, but this is not a complete sandbox. Do not expose Veles to untrusted remote users.
-
-Browser rendering is riskier than plain HTTP fetches because page JavaScript and subresources execute inside Firefox. Keep it opt-in, use the temporary profile behavior, and review tool calls before allowing them.
-
-## License
-
-Veles is licensed under the MIT License.
+- Browser rendering requires Firefox, geckodriver, and `VELES_BROWSER_ENABLED=true`.
+- Rendered pages do not expose reliable HTTP status codes through WebDriver.
+- DuckDuckGo parsing is unofficial and can break if DuckDuckGo changes its HTML.
+- DuckDuckGo may still return 429, CAPTCHA, or temporary blocks under automated load.
 
 ## Roadmap
 
 - Improve DuckDuckGo resilience against markup changes and temporary blocks.
 - Add more robust readable-content extraction.
-- Add package/install scripts for more MCP clients.
+- Add package and install scripts for more MCP clients.
+
+## License
+
+Veles is licensed under the MIT License.
